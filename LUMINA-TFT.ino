@@ -1,10 +1,6 @@
 #include <Adafruit_GFX.h>    
-#include <Adafruit_TFTLCD.h>
-#include <SD.h>
-#include <SPI.h>
+#include <Adafruit_TFTLCD.h> 
 #include <math.h>
-
-#define SD_CS 10 // SD card chip select pin
 
 #define LCD_CS A3 
 #define LCD_CD A2 
@@ -37,23 +33,9 @@ Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 #define ORANGE 0xFD20
 #define GRAY 0x7BEF
 #define DREAM_PURPLE 0x981F
-#define BUFFPIXEL 20
+#define BLACK 0x0000  // Add this near your other color definitions
 
-uint16_t read16(File &f) {
-    uint16_t result;
-    ((uint8_t *)&result)[0] = f.read();
-    ((uint8_t *)&result)[1] = f.read();
-    return result;
-}
 
-uint32_t read32(File &f) {
-    uint32_t result;
-    ((uint8_t *)&result)[0] = f.read();
-    ((uint8_t *)&result)[1] = f.read();
-    ((uint8_t *)&result)[2] = f.read();
-    ((uint8_t *)&result)[3] = f.read();
-    return result;
-}
 // Global variables for core functionality
 String aiStatus = "Booting...";
 String lastStatus = "";
@@ -76,6 +58,7 @@ void drawCartoonishOrb(int centerX, int centerY, String status);
 // Add these after the existing forward declarations
 void drawVolumeIndicator(int centerX, int centerY);
 void drawPlayButton(int centerX, int centerY);
+void drawProgressBar(int centerX, int centerY);
 void drawSongInfo();
 uint16_t getStatusColor(String status);
 void drawCentered3DText(String text, int y, int size, uint16_t color, uint16_t shadowColor);
@@ -98,42 +81,6 @@ Temperature cpuTemp = {00.0, 00.0, 00.0, "CPU", GREEN, false};
 Temperature gpu0Temp = {00.0, 00.0, 00.0, "GPU0", GREEN, false};
 Temperature gpu1Temp = {00.0, 00.0, 00.0, "GPU1", GREEN, false};
 
-void bmpDraw(char *filename, uint8_t x, uint16_t y) {
-    File bmpFile = SD.open(filename);
-    if (!bmpFile) return;
-    
-    if(read16(bmpFile) != 0x4D42) {
-        bmpFile.close();
-        return;
-    }
-    
-    bmpFile.seek(18);
-    uint16_t w = read32(bmpFile);
-    uint16_t h = read32(bmpFile);
-    
-    if(read16(bmpFile) != 1 || read16(bmpFile) != 24) {
-        bmpFile.close();
-        return;
-    }
-    
-    bmpFile.seek(54);
-    uint8_t r, g, b;
-    uint16_t p;
-    
-    for(uint16_t row = 0; row < h; row++) {
-        for(uint16_t col = 0; col < w; col++) {
-            b = bmpFile.read();
-            g = bmpFile.read();
-            r = bmpFile.read();
-            p = tft.color565(r, g, b);
-            tft.drawPixel(x + col, y + (h-1) - row, p);
-        }
-        // Skip padding bytes
-        uint8_t pad = (4 - ((w * 3) & 3)) & 3;
-        while(pad--) bmpFile.read();
-    }
-    bmpFile.close();
-}
 
 void drawCyberpunkFrame() {
     tft.drawRect(5, 5, SCREEN_WIDTH - 10, SCREEN_HEIGHT - 10, LIGHT_BLUE);
@@ -318,6 +265,47 @@ void parseSongInfo(String input) {
     }
 }
 
+void drawProgressBar(int centerX, int centerY) {
+    if (songDuration > 0) {
+        // Move progress bar to top of screen
+        int barY = 20;  // Position above orb
+        
+        unsigned long elapsed = (millis() - songStartTime) / 1000;
+        if (elapsed > songDuration) elapsed = songDuration;
+        
+        int width = map(elapsed, 0, songDuration, 0, 100);
+        
+        // Draw progress bar at top
+        tft.drawRect(centerX - 50, barY, 100, 3, WHITE);
+        tft.fillRect(centerX - 50, barY, width, 3, YELLOW);
+        
+        // Draw time below progress bar
+        String timeStr = String(elapsed/60) + ":" + 
+                        (elapsed%60 < 10 ? "0" : "") + String(elapsed%60) + "/" +
+                        String(songDuration/60) + ":" + 
+                        (songDuration%60 < 10 ? "0" : "") + String(songDuration%60);
+        
+        tft.setTextSize(1);
+        tft.setTextColor(GRAY);
+        int16_t x1, y1;
+        uint16_t w, h;
+        tft.getTextBounds(timeStr, 0, 0, &x1, &y1, &w, &h);
+        tft.setCursor(centerX - w/2, barY + 5);
+        tft.print(timeStr);
+    }
+}
+
+void drawVolumeIndicator(int centerX, int centerY) {
+    tft.fillRect(centerX + 42, centerY - 15, 15, 30, DARK_BLUE);
+    
+    for (int i = 0; i < 3; i++) {
+        int barHeight = map(min(currentVolume, (i + 1) * 33), 0, 33, 0, 10);
+        if (currentVolume > i * 33) {
+            tft.fillRect(centerX + 45 + i*4, centerY + 5 - barHeight, 2, barHeight, WHITE);
+        }
+    }
+}
+
 void drawSongInfo() {
     tft.fillRect(20, 200, SCREEN_WIDTH - 40, 30, DARK_BLUE);
     
@@ -357,12 +345,15 @@ uint16_t getStatusColor(String status) {
     if (status.equalsIgnoreCase("error")) return RED;
     
     // Emotional states
+    if (status.equalsIgnoreCase("happy")) return YELLOW;
+    if (status.equalsIgnoreCase("sad")) return PURPLE;
     if (status.equalsIgnoreCase("angry")) return BRIGHT_RED;
     
     // Activity states
     if (status.equalsIgnoreCase("talking")) return BRIGHT_NEON_BLUE;
     if (status.equalsIgnoreCase("playing")) return YELLOW;
     if (status.equalsIgnoreCase("coding")) return GREEN;
+    if (status.equalsIgnoreCase("dreaming")) return DREAM_PURPLE;
     if (status.equalsIgnoreCase("recalling")) return ORANGE;
     if (status.equalsIgnoreCase("saving")) return BRIGHT_GREEN;
     
@@ -458,6 +449,64 @@ void drawCartoonishOrb(int centerX, int centerY, String status) {
                         centerX, centerY + 10, BRIGHT_GREEN);
         tft.fillRect(centerX - 15, centerY + 10, 30, 5, BRIGHT_GREEN);
     }
+else if (status.equalsIgnoreCase("happy")) {
+    // Draw eyes
+    tft.fillCircle(centerX - 15, centerY - 10, 5, DARK_BLUE);  // Left eye
+    tft.fillCircle(centerX + 15, centerY - 10, 5, DARK_BLUE);  // Right eye
+    
+    // Add eye highlights
+    tft.fillCircle(centerX - 13, centerY - 12, 2, BLACK);  // Left highlight
+    tft.fillCircle(centerX + 17, centerY - 12, 2, BLACK);  // Right highlight
+    
+    // Draw smile curve
+    for (int i = -20; i <= 20; i++) {
+        int y = centerY + 15 - (i * i) / 25;  // Adjusted curve position and shape
+        // Draw thicker smile line
+        for(int t = 0; t < 5; t++) {          // Increased thickness from 3 to 5
+            tft.drawPixel(centerX + i, y + t, BLACK);
+        }
+        // Add second layer for extra thickness
+        for(int t = 1; t < 4; t++) {          // Inner layer
+            tft.drawPixel(centerX + i, y + t, BLACK);
+        }
+                }
+                 // Add second layer for extra thickness
+        for(int t = 1; t < 3; t++) {          // Inner layer
+            tft.drawPixel(centerX + i, y + t, BLACK);
+        }
+    }
+    
+    // Add rosy cheeks
+    tft.fillCircle(centerX - 25, centerY + 5, 4, PINK);
+    tft.fillCircle(centerX + 25, centerY + 5, 4, PINK);
+} 
+else if (status.equalsIgnoreCase("sad")) {
+    // Draw sad eyes (drooping)
+    tft.fillCircle(centerX - 15, centerY - 8, 5, PURPLE);  // Left eye
+    tft.fillCircle(centerX + 15, centerY - 8, 5, PURPLE);  // Right eye
+    
+    // Draw eyebrows (angled down)
+    tft.drawLine(centerX - 20, centerY - 20, centerX - 10, centerY - 15, PURPLE);
+    tft.drawLine(centerX + 10, centerY - 15, centerX + 20, centerY - 20, PURPLE);
+    
+    // Draw frown curve
+    for (int i = -20; i <= 20; i++) {
+        int y = centerY + 15 + (i * i) / 20;  // Frown curve
+        // Draw thicker frown line
+        for(int t = 0; t < 3; t++) {
+            tft.drawPixel(centerX + i, y + t, PURPLE);
+        }
+    }
+    
+    // Add tear drop (with color)
+    tft.fillCircle(centerX - 20, centerY, 3, MEDIUM_BLUE);
+    tft.fillTriangle(
+        centerX - 20, centerY - 3,
+        centerX - 17, centerY,
+        centerX - 23, centerY,
+        MEDIUM_BLUE  // Added color parameter
+    );
+}
     else if (status.equalsIgnoreCase("angry")) {
         // Angry expression
         tft.fillTriangle(centerX - 20, centerY - 10, centerX + 20, centerY - 10,
@@ -501,6 +550,16 @@ void drawCartoonishOrb(int centerX, int centerY, String status) {
         tft.drawLine(centerX - 5, centerY, centerX - 15, centerY + 15, WHITE);
         tft.drawLine(centerX + 15, centerY - 15, centerX + 5, centerY, GREEN);
         tft.drawLine(centerX + 5, centerY, centerX + 15, centerY + 15, GREEN);
+    }
+    else if (status.equalsIgnoreCase("dreaming")) {
+        // Dream spiral
+        for(int i = 0; i < 4; i++) {
+            float angle = i * PI / 2;
+            int x1 = centerX + cos(angle) * (10 + i * 5);
+            int y1 = centerY + sin(angle) * (10 + i * 5);
+            tft.fillCircle(x1, y1, 4, DREAM_PURPLE);
+        }
+        tft.fillCircle(centerX, centerY, 5, WHITE);
     }
     else if (status.equalsIgnoreCase("control")) {
         // Control panel dots
@@ -562,6 +621,7 @@ void drawStatus(String status) {
         // Draw song info if in playing state
         if (status.equalsIgnoreCase("playing")) {
             drawSongInfo();
+            drawProgressBar(SCREEN_WIDTH / 2, 90);
         }
     } else if (status.equalsIgnoreCase("Booting...")) {
         tft.fillRect(40, 190, 240, 40, DARK_BLUE);
@@ -581,13 +641,7 @@ void drawStatus(String status) {
 
 void setup() {
     Serial.begin(9600);
-    Serial.print("Initializing SD card...");
-    if (!SD.begin(SD_CS)) {
-        Serial.println("failed!");
-        return;
-    }
-    Serial.println("SD card initialization done."); 
-    tft.reset(); // Remove duplicate reset
+    tft.reset();
     tft.begin(0x9341);
     tft.setRotation(1);
     tft.fillScreen(DARK_BLUE);
@@ -617,14 +671,6 @@ void loop() {
                 drawStatus(aiStatus);  // Force redraw after song info update
             }
         }
-        // Inside your if (Serial.available() > 0) block, add this before your other conditions:
-if (input.startsWith("image|")) {
-    String imageName = input.substring(6);
-    imageName.trim();
-    char filename[13]; // 8.3 format max
-    imageName.toCharArray(filename, 13);
-    bmpDraw(filename, (SCREEN_WIDTH-64)/2, (SCREEN_HEIGHT-64)/2);
-}
         else if (input.startsWith("temp|")) {
             parseTemperature(input);
             if (aiStatus.equalsIgnoreCase("online") || 
@@ -643,6 +689,13 @@ if (input.startsWith("image|")) {
             }
             drawStatus(aiStatus);
         }
+    }
+    
+    // Update progress bar every second if playing
+    static unsigned long lastUpdate = 0;
+    if (aiStatus.equalsIgnoreCase("playing") && millis() - lastUpdate > 1000) {
+        drawProgressBar(SCREEN_WIDTH / 2, 90);
+        lastUpdate = millis();
     }
     
     if (isOverheated && aiStatus.equalsIgnoreCase("critical")) {
