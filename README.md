@@ -165,7 +165,7 @@ If the system becomes unresponsive:
 ## Safety Features
 
 - **Auto-timeout:**
-  - System enters a safe state after 65 seconds of inactivity.
+  - System enters a offline state after 65 seconds of inactivity.
 - **Critical State Activation:**
   - Triggered automatically when temperature thresholds are exceeded.
 - **Status Recovery:**
