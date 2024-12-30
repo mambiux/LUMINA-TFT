@@ -1,125 +1,206 @@
-LUMINA-TFT
-A Status Screen using a TFT shield and Arduino Uno for my AI dedicated hardware build called LUMINA
-About
-LUMINA-TFT is a display system that shows real-time status, temperature, and state information for an AI system on a TFT LCD shield. It features an animated orb display with various states, temperature monitoring, and a cyberpunk-inspired interface.
-Hardware Requirements
+# LUMINA-TFT
 
-Arduino Uno/Mega
-TFT LCD Shield (320x240 resolution)
-USB cable for serial communication
+A **status screen** using a TFT shield and Arduino Uno for my personal LUMINA AI-dedicated hardware build.
 
-Pin Configuration
-  LCD_CS: A3
-  LCD_CD: A2
-  LCD_WR: A1
-  LCD_RD: A0
-  LCD_RESET: A4
-Features
+## About
 
-Animated status orb with multiple states
-Real-time temperature monitoring for CPU and GPUs
-Automatic temperature warnings
-Status state persistence
-Auto-timeout safety feature
-Cyberpunk-inspired design
+**LUMINA-TFT** is a display system designed to provide real-time updates on the status, temperature, and state of the LUMINA AI system. The display uses a TFT LCD shield and features an **animated orb** that reflects various operational, activity, and emotional states. It is inspired by **cyberpunk aesthetics** and offers an interactive interface.
 
-Status Commands
-Send these commands via Serial (9600 baud rate)
-Basic States
+---
 
-online    - Normal operation (green)
-offline   - System off (red)
-error     - Error state (red)
-critical  - Critical state (red with warning)
-sleep     - Sleep mode (pale blue)
-booting   - Boot sequence (neon blue)
+## Features
 
-Activity States
+- **Animated Orb Display:**
+  - Orb changes colors and effects based on the system state.
+- **Temperature Monitoring:**
+  - Displays CPU and GPU temperatures in real-time.
+  - Includes automatic warnings for high temperatures.
+- **Status Persistence:**
+  - Maintains the last known state even after timeouts or disconnections.
+- **Safety Features:**
+  - Automatic timeout after 65 seconds of inactivity.
+  - Critical state activated when temperatures exceed safe thresholds.
+- **Cyberpunk-inspired Design:**
+  - Unique visual elements inspired by sci-fi interfaces.
 
-talking   - Blue with sound waves
-coding    - Green with code brackets
-dreaming  - Purple spiral effect
-recalling - Orange with spinning dots
-saving    - Green with download arrow
-control   - Orange control panel
-settings  - Orange gear display
+---
 
-Emotional States
+## Hardware Requirements
 
-happy   - Yellow with smile
-sad     - Purple with frown
-angry   - Red with angry expression
+- **Arduino Uno or Mega**
+- **TFT LCD Shield**
+  - Resolution: 320x240 pixels
+- **USB Cable**
+  - For serial communication and power
 
-Temperature Monitoring
-Format: temp|device|value
+### Pin Configuration
+| Pin | Function    |
+|-----|-------------|
+| A3  | LCD_CS      |
+| A2  | LCD_CD      |
+| A1  | LCD_WR      |
+| A0  | LCD_RD      |
+| A4  | LCD_RESET   |
 
-temp|cpu|45.5    - Set CPU temperature
-temp|gpu0|60.2   - Set GPU0 temperature
-temp|gpu1|55.8   - Set GPU1 temperature
+---
 
-Temperature thresholds:
+## Status Commands
 
-Warning: 80.0°C (red)
-High: 60.0°C (yellow)
-Normal: <60.0°C (green)
+Commands can be sent to the system via **Serial Communication** (9600 baud rate). Commands are case-insensitive and should be followed by a newline character (`\n`).
 
-Music Display (Optional)
-Format: playing|song_name|artist_name|duration_in_seconds
+### Basic States
+| Command   | Description               | Color       |
+|-----------|---------------------------|-------------|
+| `online`  | Normal operation          | Green       |
+| `offline` | System off                | Red         |
+| `error`   | Error state               | Red         |
+| `critical`| Critical state            | Red/Warning |
+| `sleep`   | Sleep mode                | Pale Blue   |
+| `booting` | Boot sequence             | Neon Blue   |
 
-playing|My Song|Artist Name|180
+### Activity States
+| Command    | Description               | Effect/Color          |
+|------------|---------------------------|-----------------------|
+| `talking`  | Indicates speech          | Blue with sound waves |
+| `coding`   | Coding activity           | Green with brackets   |
+| `dreaming` | Processing in background  | Purple spiral effect  |
+| `recalling`| Retrieving data           | Orange with dots      |
+| `saving`   | Saving data               | Green with arrow      |
+| `control`  | Control state             | Orange control panel  |
+| `settings` | Adjusting configurations  | Orange gear display   |
 
-  playing|My Song|Artist Name|180
+### Emotional States
+| Command   | Description               | Effect/Color        |
+|-----------|---------------------------|---------------------|
+| `happy`   | Cheerful mood             | Yellow with smile   |
+| `sad`     | Low mood                  | Purple with frown   |
+| `angry`   | Frustrated state          | Red with expression |
 
+---
 
-Safety Features
+## Temperature Monitoring
 
-Auto-timeout after 65 seconds of no commands
-Automatic critical state on high temperature
-Status recovery after temperature normalization
+### Command Format
+```plaintext
+temp|device|value
+```
 
-Communication Protocol
+| Example Command      | Description               |
+|-----------------------|---------------------------|
+| `temp|cpu|45.5`       | Set CPU temperature       |
+| `temp|gpu0|60.2`      | Set GPU0 temperature      |
+| `temp|gpu1|55.8`      | Set GPU1 temperature      |
 
-Baud Rate: 9600
-Line Ending: Newline (\n)
-Format: ASCII text commands
-Case-insensitive commands
+### Temperature Thresholds
+| Level    | Range (°C) | Color       |
+|----------|------------|-------------|
+| Normal   | < 60.0     | Green       |
+| High     | 60.0 - 80.0| Yellow      |
+| Warning  | > 80.0     | Red         |
 
-Installation
+---
 
-Install required libraries:
+## Optional Features
 
-Adafruit_GFX
-Adafruit_TFTLCD
+### Music Display
+The system can display music currently playing.
 
+#### Command Format
+```plaintext
+playing|song_name|artist_name|duration_in_seconds
+```
+| Example Command                       | Description             |
+|---------------------------------------|-------------------------|
+| `playing|My Song|Artist Name|180`     | Displays song info      |
 
-Upload the code to your Arduino
-Connect the TFT shield to the specified pins
+---
 
-Usage Example
+## Communication Protocol
 
+- **Baud Rate:** 9600
+- **Line Ending:** Newline (`\n`)
+- **Format:** ASCII text commands
+- **Commands:** Case-insensitive
+
+---
+
+## Installation
+
+1. **Install Required Libraries:**
+   - [Adafruit GFX Library](https://github.com/adafruit/Adafruit-GFX-Library)
+   - [Adafruit TFTLCD Library](https://github.com/adafruit/TFTLCD-Library)
+2. **Upload the Code:**
+   - Load the provided sketch onto your Arduino Uno or Mega.
+3. **Connect the TFT Shield:**
+   - Attach the shield to the Arduino pins as specified in the **Pin Configuration** section.
+4. **Open Serial Monitor:**
+   - Set the baud rate to 9600.
+
+---
+
+## Usage Example
+
+Here is an example of sending commands via the Serial Monitor:
+
+```cpp
 // Open serial connection at 9600 baud
-// Send commands:
-Serial.println("online");              // Set online status
+Serial.println("online");              // Set to online status
 Serial.println("temp|cpu|45.5");       // Update CPU temperature
 Serial.println("temp|gpu0|55.2");      // Update GPU0 temperature
 Serial.println("temp|gpu1|50.8");      // Update GPU1 temperature
+```
 
-Error Recovery
-If system becomes unresponsive:
+---
 
-Send "offline" command
-Reset Arduino
-Resume with "online" command
+## Error Recovery
 
-License
-[Your License Here]
-Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-Acknowledgments
+If the system becomes unresponsive:
 
-Inspired by sci-fi interfaces
-Built with Adafruit libraries
-Designed for AI system monitoring
-Built with an Arduino uno I had gathering dust, sadly it runned out of memory before making more cool stuff work
-  
-  
+1. Send the `offline` command.
+2. Reset the Arduino.
+3. Resume operation by sending the `online` command.
+
+---
+
+## Safety Features
+
+- **Auto-timeout:**
+  - System enters a safe state after 65 seconds of inactivity.
+- **Critical State Activation:**
+  - Triggered automatically when temperature thresholds are exceeded.
+- **Status Recovery:**
+  - System returns to normal operation once conditions stabilize.
+
+---
+
+## Contributing
+
+Contributions are welcome! To make changes:
+
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature-name`).
+3. Commit your changes (`git commit -m 'Add feature-name'`).
+4. Push to your branch (`git push origin feature-name`).
+5. Open a pull request.
+
+For major changes, please open an issue first to discuss your ideas.
+
+---
+
+## Acknowledgments
+
+- Inspired by sci-fi interfaces and cyberpunk aesthetics.
+- Built using [Adafruit Libraries](https://learn.adafruit.com/adafruit-gfx-graphics-library).
+- Designed for AI system monitoring with an **Arduino Uno**.
+
+---
+
+## License
+
+MIT
+
+---
+
+## Notes
+
+- The project was built using an Arduino Uno, but due to memory constraints, further expansion was limited. Consider using an Arduino Mega for additional features.
